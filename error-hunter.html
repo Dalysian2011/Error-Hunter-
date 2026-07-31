@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#EDF1EF">
+<title>Разбор предложений — Dalysian</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EDF1EF;
+    --line: #C7D2CD;
+    --ink: #1F2A3C;
+    --ink-soft: #4B5768;
+    --red: #C0453A;
+    --red-soft: rgba(192,69,58,0.12);
+    --ochre: #B9822C;
+    --teal: #2E6F63;
+    --teal-soft: rgba(46,111,99,0.12);
+    --card: #F6F8F6;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    position: relative;
+  }
+  body::before{
+    content:"";
+    position: fixed; inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .wrap{
+    position: relative;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 22px 90px;
+  }
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display:flex; align-items:center; gap: 9px;
+  }
+  .eyebrow::before{
+    content:""; width:7px; height:7px; border-radius:50%;
+    background: var(--red);
+  }
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(32px, 7vw, 44px);
+    margin: 12px 0 8px;
+    line-height: 1.05;
+  }
+  p.thesis{
+    color: var(--ink-soft);
+    font-size: 16px;
+    max-width: 48ch;
+    margin: 0 0 32px;
+  }
+
+  /* input area — ruled paper */
+  .input-card{
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 3px 4px 0 rgba(31,42,60,0.05);
+  }
+  label{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display:block;
+    margin-bottom: 10px;
+  }
+  textarea{
+    width:100%;
+    min-height: 110px;
+    resize: vertical;
+    border: none;
+    background:
+      repeating-linear-gradient(
+        var(--card) 0px, var(--card) 30px,
+        var(--line) 31px, var(--card) 32px
+      );
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-style: italic;
+    color: var(--ink);
+    line-height: 32px;
+    padding: 2px 2px 0;
+    outline: none;
+  }
+  textarea::placeholder{ color: #9AA5B1; opacity: 1; }
+
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    margin-top: 14px;
+    gap: 12px;
+  }
+  .counter{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  button.check{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 11px 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  button.check:hover{ background: var(--red); }
+  button.check:active{ transform: translateY(1px); }
+  button.check:disabled{ opacity: 0.5; cursor: default; }
+  button.check:disabled:hover{ background: var(--ink); }
+
+  /* results */
+  .results{
+    margin-top: 40px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .results.show{ opacity: 1; transform: none; }
+
+  .sec-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+
+  .marked-text{
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-style: italic;
+    line-height: 1.9;
+    color: var(--ink);
+    padding: 4px 0 0;
+  }
+  .marked-text .err{
+    position: relative;
+    color: var(--ink);
+    cursor: help;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 3 Q 2 0 4 3 T 8 3' stroke='%23C0453A' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-position: bottom;
+    background-size: 8px 4px;
+    padding-bottom: 2px;
+  }
+  .marked-text .err .tip{
+    display:none;
+    position:absolute;
+    bottom: 130%;
+    left: 0;
+    min-width: 220px;
+    max-width: 280px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family:'Inter', sans-serif;
+    font-style: normal;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border-radius: 4px;
+    z-index: 5;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  }
+  .marked-text .err .tip .fix{
+    color: var(--ochre);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    display:block;
+    margin-bottom: 4px;
+  }
+  .marked-text .err:hover .tip,
+  .marked-text .err:focus .tip,
+  .marked-text .err.active .tip{ display:block; }
+
+  .fixed-box{
+    margin-top: 26px;
+    background: var(--teal-soft);
+    border-left: 3px solid var(--teal);
+    padding: 14px 16px;
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    color: #204943;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .notes{
+    margin-top: 30px;
+    display: grid;
+    gap: 14px;
+  }
+  .note{
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 10px;
+  }
+  .note .n{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--red);
+  }
+  .note .body p{
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+  .note .body .pair{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .note .body .pair .arrow{ color: var(--ochre); margin: 0 6px; }
+  .note .body .wrong{ text-decoration: line-through; color: var(--red); }
+
+  .no-errors{
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--teal);
+  }
+
+  .status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+    display:flex; align-items:center; gap: 8px;
+  }
+  .dot{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--ochre);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:0.3;} 50%{opacity:1;} }
+
+  .error-msg{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--red);
+  }
+
+  footer{
+    margin-top: 60px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .results{ transition:none; }
+    .dot{ animation:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">разбор предложений · red pen</div>
+  <h1>Найди ошибку</h1>
+  <p class="thesis">Впиши предложение на английском — я найду ошибки, объясню каждую и покажу
+    исправленный вариант. Как будто учитель проверяет твою тетрадь, только без оценки.</p>
+
+  <div class="input-card">
+    <label for="sentence">твоё предложение</label>
+    <textarea id="sentence" placeholder="Example: She don't like to studying maths, but she like science very much."></textarea>
+    <div class="row">
+      <span class="counter" id="counter">0 символов</span>
+      <button class="check" id="checkBtn">проверить →</button>
+    </div>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <footer>чернила ещё не высохли · инструмент Dalysian</footer>
+</div>
+
+<script>
+  const textarea = document.getElementById('sentence');
+  const counter = document.getElementById('counter');
+  const checkBtn = document.getElementById('checkBtn');
+  const results = document.getElementById('results');
+
+  textarea.addEventListener('input', () => {
+    counter.textContent = textarea.value.length + ' символов';
+  });
+
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, m => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[m]));
+  }
+
+  function buildMarkedHtml(original, errors){
+    let html = escapeHtml(original);
+    // sort by length desc to avoid partial-overlap replacement issues
+    const sorted = [...errors].sort((a,b) => b.original_fragment.length - a.original_fragment.length);
+    sorted.forEach((e, idx) => {
+      const frag = escapeHtml(e.original_fragment);
+      if(!frag.trim()) return;
+      const safeFix = escapeHtml(e.corrected_fragment);
+      const safeExpl = escapeHtml(e.explanation);
+      const marker = `<span class="err" tabindex="0">${frag}<span class="tip"><span class="fix">→ ${safeFix}</span>${safeExpl}</span></span>`;
+      // replace first unmarked occurrence only
+      const idxPos = html.indexOf(frag);
+      if(idxPos !== -1){
+        html = html.slice(0, idxPos) + marker + html.slice(idxPos + frag.length);
+      }
+    });
+    return html;
+  }
+
+  async function checkSentence(){
+    const text = textarea.value.trim();
+    if(!text){
+      textarea.focus();
+      return;
+    }
+    checkBtn.disabled = true;
+    results.classList.remove('show');
+    results.innerHTML = `<div class="status"><span class="dot"></span> проверяю предложение…</div>`;
+    results.classList.add('show');
+
+    const systemPrompt = `You are an English grammar checker for a Russian-speaking teenager learning English.
+Given a sentence, find all grammar, spelling, word choice, and punctuation errors.
+Respond ONLY with valid JSON, no markdown fences, no preamble, matching exactly this shape:
+{
+  "has_errors": boolean,
+  "corrected_text": "the full corrected sentence in English",
+  "errors": [
+    { "original_fragment": "exact substring from the input sentence that is wrong", "corrected_fragment": "the fixed version of that fragment", "explanation": "short explanation IN RUSSIAN of why it was wrong, 1 sentence, friendly and clear, no jargon" }
+  ],
+  "encouragement": "one short friendly sentence IN RUSSIAN, specific to this sentence, encouraging and never condescending"
+}
+If there are no errors, return has_errors: false, empty errors array, corrected_text equal to input, and an encouraging Russian sentence praising what was correct.
+original_fragment must be an exact, verbatim substring of the input sentence (same casing/spelling) so it can be located with string search.`;
+
+    try{
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [
+            { role: "user", content: text }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      const textBlock = (data.content || []).map(b => b.text || "").join("");
+      const cleaned = textBlock.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      renderResults(text, parsed);
+    }catch(err){
+      results.innerHTML = `<div class="error-msg">Что-то пошло не так при проверке. Попробуй ещё раз через пару секунд.</div>`;
+      console.error(err);
+    }finally{
+      checkBtn.disabled = false;
+    }
+  }
+
+  function renderResults(original, parsed){
+    if(!parsed.has_errors){
+      results.innerHTML = `
+        <div class="sec-label">результат</div>
+        <p class="no-errors">Ошибок не найдено — предложение верное. ✓</p>
+        <p style="color:var(--ink-soft); font-size:14.5px; margin-top:10px;">${escapeHtml(parsed.encouragement || '')}</p>
+      `;
+      return;
+    }
+
+    const markedHtml = buildMarkedHtml(original, parsed.errors);
+
+    const notesHtml = parsed.errors.map((e, i) => `
+      <div class="note">
+        <span class="n">${String(i+1).padStart(2,'0')}</span>
+        <div class="body">
+          <div class="pair"><span class="wrong">${escapeHtml(e.original_fragment)}</span><span class="arrow">→</span>${escapeHtml(e.corrected_fragment)}</div>
+          <p>${escapeHtml(e.explanation)}</p>
+        </div>
+      </div>
+    `).join("");
+
+    results.innerHTML = `
+      <div class="sec-label">твой текст</div>
+      <div class="marked-text">${markedHtml}</div>
+
+      <div class="fixed-box">${escapeHtml(parsed.corrected_text)}</div>
+
+      <div class="sec-label" style="margin-top:30px;">разбор ошибок</div>
+      <div class="notes">${notesHtml}</div>
+
+      <p style="margin-top:26px; color:var(--ink-soft); font-size:14.5px; font-style:italic;">${escapeHtml(parsed.encouragement || '')}</p>
+    `;
+  }
+
+  checkBtn.addEventListener('click', checkSentence);
+  textarea.addEventListener('keydown', (e) => {
+    if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){
+      checkSentence();
+    }
+  });
+</script>
+</body>
+</html>
